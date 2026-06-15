@@ -3,3 +3,35 @@ __pycache__/
 .ipynb_checkpoints/
 *.pkl
 *.joblib
+.env
+
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Secrets & Configuration
+.env
+*.env
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Streamlit logs and runtime files
+.streamlit/
+*.log
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+venv/
+__pycache__/
+.env
+*.pyc
+scan_history.json
+SentinelAI_Report.pdf

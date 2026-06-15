@@ -6,6 +6,11 @@ from email import message_from_bytes
 from src.pipeline import run_sentinel_pipeline
 from src.ocr import extract_text
 from src.recommendations import get_recommendation
+from src.pdf_report import generate_pdf_report
+from src.history import load_history
+import pandas as pd
+import plotly.express as px
+
 
 st.set_page_config(
     page_title="SentinelAI Workspace",
@@ -18,6 +23,35 @@ st.sidebar.title("🛡️ SentinelAI Core")
 mode = st.sidebar.radio("Analysis Mode Network Layer", ["Offline", "Online"])
 st.sidebar.divider()
 st.sidebar.info(f"🟢 Processing Unit Engaged\nThreat Intel Sync: **{mode} Mode**")
+
+st.sidebar.divider()
+st.sidebar.subheader("📜 Recent Scan History")
+
+history = load_history()
+
+if history:
+    df = pd.DataFrame(history)
+    fig = px.line(
+        df,
+        y="score",
+        title="Threat Score Trend"
+    )
+    st.sidebar.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+if history:
+    for item in history[-5:][::-1]:
+        st.sidebar.caption(
+            f"{item['severity']} | {round(item['score'],2)}"
+        )
+else:
+    st.sidebar.write(
+        "No previous scans."
+    )
+
+st.sidebar.divider()
 
 st.title("🛡️ SentinelAI")
 st.subheader("Enterprise Counter-Phishing & Payload Assessment Platform")
@@ -34,8 +68,12 @@ def render_dashboard(payload: dict, show_headers: bool):
     Renders centralized diagnostics, telemetry visual gauges, and clean, deduplicated report segments.
     """
     st.write("")
-    if payload["prediction"] == 1:
+    score = payload["overall_score"]
+
+    if score >= 30:
         st.error("🚨 HIGH-RISK THREAT ALERT: PHISHING INDICATORS IDENTIFIED")
+    elif score >= 10:
+        st.warning("⚠️ SUSPICIOUS ACTIVITY DETECTED")
     else:
         st.success("✅ ANALYSIS COMPLETE: SIGNATURES COHERENT WITH SAFE COMMS")
 
@@ -78,7 +116,74 @@ def render_dashboard(payload: dict, show_headers: bool):
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    st.progress(min(int(payload["overall_score"]), 100))
+
+    score = payload["overall_score"]
+
+    if score < 10:
+        verdict = "✅ BENIGN COMMUNICATION"
+
+    elif score < 30:
+        verdict = "⚠️ SUSPICIOUS ACTIVITY"
+
+    elif score < 60:
+        verdict = "🚨 LIKELY PHISHING"
+
+    else:
+        verdict = "🔥 CONFIRMED HIGH-RISK THREAT"
+
+    st.subheader("📌 Executive Summary")
+
+    col1,col2,col3,col4,col5,col6 = st.columns(6)
+
+    col1.metric(
+        "Threat Score",
+        round(payload["overall_score"],2)
+    )
+
+    col2.metric(
+        "Classification",
+        payload["classification"]
+    )
+
+    col3.metric(
+        "Severity",
+        payload["threat_level"]
+    )
+    col4.metric(
+        "Indicators",
+        len(payload["indicators"])
+    )
+    col5.metric(
+        "URLs",
+        len(payload["url_results"])
+    )
+    col6.metric(
+        "MITRE",
+        len(payload["mitre"])
+    )
+
+
+    st.subheader("📝 SOC Analyst Notes")
+    if payload["overall_score"] < 20:
+        st.success(
+            "Communication appears benign. No containment action required."
+        )
+    elif payload["overall_score"] < 40:
+        st.warning(
+            "Minor anomalies observed. User awareness recommended."
+        )
+    elif payload["overall_score"] < 70:
+        st.warning(
+            "Suspicious activity detected. Manual investigation advised."
+        )
+    else:
+        st.error(
+            "High-confidence phishing attempt detected. Immediate containment required."
+        )
+
+
+
+
     st.divider()
 
     # 3. Protocol Header Verification Display
@@ -124,6 +229,63 @@ def render_dashboard(payload: dict, show_headers: bool):
             st.write(f"• {finding}")
     st.divider()
 
+
+    st.subheader("🔍 Indicators of Compromise")
+    iocs = payload.get("iocs", {})
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Domains**")
+        domains = iocs.get("domains", [])
+        if domains:
+            for item in domains:
+                st.write(f"• {item}")
+        else:
+            st.caption("No domains detected")
+
+        st.markdown("**IP Addresses**")
+        ips = iocs.get("ips", [])
+        if ips:
+            for item in ips:
+                st.write(f"• {item}")
+        else:
+            st.caption("No ips detected")
+
+    with c2:
+
+        st.markdown("**URLs**")
+        urls = iocs.get("urls", [])
+        if urls:
+            for item in urls:
+                st.write(f"• {item}")
+        else:
+            st.caption("No URLs detected")
+
+
+        st.markdown("**Emails**")
+        emails = iocs.get("emails", [])
+
+        if emails:
+            for item in emails:
+                st.write(f"• {item}")
+        else:
+            st.caption("No emails detected")
+
+    st.divider()
+
+
+
+    st.subheader("🎯 MITRE ATT&CK Mapping")
+
+    for item in payload["mitre"]:
+
+        with st.expander(item):
+            st.write(
+                "Mapped from detected phishing behavior."
+            )
+
+
+
+
     # 6. Deep Routing URL Mapping Logs (Cleaned domain profiles)
     if payload["url_results"]:
         st.subheader("🌐 Link Transport & Resolution Logging")
@@ -149,8 +311,16 @@ def render_dashboard(payload: dict, show_headers: bool):
 
     # 8. Forensic Actions & Automated Reporting
     st.subheader("🧠 Component Engine Attribution Weights")
-    for system_source, component_weight in payload["explanation"].items():
-        st.text(f"↳ Module Assignment [{system_source}]: +{component_weight}")
+    cols = st.columns(
+        len(payload["explanation"])
+    )
+    for i, (system_source, component_weight) in enumerate(
+        payload["explanation"].items()
+    ):
+        cols[i].metric(
+            system_source,
+            round(component_weight, 2)
+        )
         
     st.subheader("📋 Incident Remediation Directives")
     st.warning(get_recommendation(payload["overall_score"]))
@@ -163,6 +333,23 @@ def render_dashboard(payload: dict, show_headers: bool):
         file_name="SentinelAI_Threat_Log.md",
         mime="text/markdown"
     )
+
+    pdf_file = generate_pdf_report(
+        "SentinelAI_Report.pdf",
+        payload
+    )
+
+    with open(
+        pdf_file,
+        "rb"
+    ) as f:
+
+        st.download_button(
+            label="📄 Export PDF Report",
+            data=f,
+            file_name="SentinelAI_Report.pdf",
+            mime="application/pdf"
+        )
 
 # --- INTAKE INTERFACE: TAB 1 (EMAIL CORE) ---
 with tab1:

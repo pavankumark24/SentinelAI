@@ -15,6 +15,10 @@ from src.explainability import explain_score
 from src.recommendations import get_recommendation
 from src.report_generator import generate_report
 from src.header_analyzer import parse_and_audit_headers
+from src.ioc_extractor import extract_iocs
+from src.mitre_mapper import map_to_mitre
+from src.history import save_scan, load_history
+
 
 def process_single_url(url: str) -> dict:
     """
@@ -51,6 +55,7 @@ def run_sentinel_pipeline(text: str, input_type: str, mode: str, attachment_byte
     # Deduplicate raw structural text indicators right away
     indicators = list(dict.fromkeys(get_threat_indicators(text)))
     sender_result = analyze_sender(text)
+    iocs = extract_iocs(text)
     if sender_result and "findings" in sender_result:
         sender_result["findings"] = list(dict.fromkeys(sender_result["findings"]))
     
@@ -156,6 +161,12 @@ def run_sentinel_pipeline(text: str, input_type: str, mode: str, attachment_byte
     else:
         threat_level = "CRITICAL"
 
+    mitre = map_to_mitre(
+        indicators,
+        url_results,
+        sender_result
+    )
+
     # 7. Document Output Generation
     display_confidence = confidence_percent if prediction == 1 else round(100 - confidence_percent, 2)
     explanation = explain_score(confidence_percent, url_score, sender_result.get("score", 0), vt_score)
@@ -173,6 +184,15 @@ def run_sentinel_pipeline(text: str, input_type: str, mode: str, attachment_byte
         raw_url_reports
     )
 
+    save_scan( overall_score, threat_level )
+    print("SCAN SAVED")
+
+    if prediction == 1:
+        classification = "PHISHING"
+    else:
+        classification = "SAFE"
+    
+
     return {
         "prediction": 1 if (prediction == 1 or overall_score >= 70) else 0,
         "display_confidence": display_confidence,
@@ -187,5 +207,9 @@ def run_sentinel_pipeline(text: str, input_type: str, mode: str, attachment_byte
         "attachment_results": attachment_results,
         "explanation": explanation,
         "header_score": header_score,
-        "report": generated_md_report
+        "report": generated_md_report,
+        "iocs": iocs,
+        "mitre": mitre,
+        "scan_history": load_history(),
+        "classification": classification
     }
