@@ -1,37 +1,75 @@
+# ==========================================
+# Virtual Environments
+# ==========================================
 venv/
-__pycache__/
-.ipynb_checkpoints/
-*.pkl
-*.joblib
-.env
-
-
-# Virtual Environment
-venv/
-ENV/
 env/
+ENV/
 
-# Secrets & Configuration
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
 .env
 *.env
 
-# Python caching
+# ==========================================
+# Python Cache
+# ==========================================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Streamlit logs and runtime files
-.streamlit/
-*.log
+# ==========================================
+# Jupyter
+# ==========================================
+.ipynb_checkpoints/
 
-# OS specific files
-.DS_Store
-Thumbs.db
+# ==========================================
+# Model Artifacts
+# ==========================================
+*.pkl
+*.joblib
 
-venv/
-__pycache__/
-.env
-*.pyc
+# Ignore experimental models
+models/
+
+# Uncomment if you later want to track only production model
+# !models/
+# !models/final_sentinel_distilbert/
+# !models/final_sentinel_distilbert/config.json
+# !models/final_sentinel_distilbert/model.safetensors
+# !models/final_sentinel_distilbert/tokenizer.json
+# !models/final_sentinel_distilbert/tokenizer_config.json
+
+# ==========================================
+# Training Data
+# ==========================================
+data/raw/
+
+# ==========================================
+# Generated Reports & Runtime Files
+# ==========================================
 scan_history.json
 SentinelAI_Report.pdf
+*.log
+
+# ==========================================
+# Streamlit
+# ==========================================
+.streamlit/
+
+# ==========================================
+# Backup / Temporary Files
+# ==========================================
+src/predict_backup.py
+
+# ==========================================
+# Images & Screenshots
+# ==========================================
+test.png
+
+# ==========================================
+# OS Files
+# ==========================================
+.DS_Store
+Thumbs.db
