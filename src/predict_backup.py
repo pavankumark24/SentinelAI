@@ -1,10 +1,26 @@
-from src.distilbert_predict import predict_email_distilbert
+import joblib
+from pathlib import Path
 import re
 
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+model = joblib.load(BASE_DIR / "models" / "phishing_model.pkl")
+vectorizer = joblib.load(BASE_DIR / "models" / "vectorizer.pkl")
+
+
 def predict_email(email_text):
-    prediction, phishing_prob = predict_email_distilbert(email_text)
+
+    email_vector = vectorizer.transform([email_text])
+
+    prediction = model.predict(email_vector)[0]
+
+    confidence = model.predict_proba(email_vector)[0]
+
+    phishing_prob = confidence[1]
+
     return prediction, phishing_prob
+
 
 
 def get_threat_indicators(email_text):
